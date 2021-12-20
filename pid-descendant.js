@@ -19,7 +19,7 @@ ps              20688 16965 R+
 
 Win32:
 1. wmic PROCESS WHERE ParentProcessId=4604 GET Name,ParentProcessId,ProcessId,Status)
-2. The order of head columns is fixed !!!
+2. The order of head columns is fixed ----- !!!
 ```shell
 > wmic PROCESS GET Name,ProcessId,ParentProcessId,Status
 Name                          ParentProcessId  ProcessId   Status
@@ -34,19 +34,20 @@ var child_process = require('child_process');
 var text_line_array = require('text-line-array');
 
 //==============================
-//define result-item as [ppid, pid, name]
+//define result-item as [ppid, pid, name, stat]
 
-var COLUMN_COUNT = 3;
+var COLUMN_COUNT = 4;
 
 var INDEX_PPID = 0;
 var INDEX_PID = 1;
 var INDEX_NAME = 2;
+var INDEX_STAT = 3;
 
 //------------------------------
 
 var isWindows = (process.platform.slice(0, 3) === 'win');
 
-//getPidDescendant = function (pid, cb)		//set pid=null to get all
+//getPidDescendant = function (pid, cb)		//set pid=null to get system pid
 var getPidDescendant = function (pid, cb) {
 	//arguments
 	if (typeof (cb) !== "function") throw Error("getPidDescendant require callback function");
@@ -56,64 +57,49 @@ var getPidDescendant = function (pid, cb) {
 
 	//exec ps
 	var proc = isWindows
-		? child_process.spawn('wmic.exe', ['PROCESS', 'GET', 'ParentProcessId,ProcessId,Name'])
-		: child_process.spawn('ps', ['-A', '-o', 'ppid,pid,comm']);
+		//in windows, the Status is not implemented, and is always empty, refer to https://docs.microsoft.com/zh-cn/windows/win32/cimwin32prov/win32-process?redirectedfrom=MSDN
+		? child_process.spawn('wmic.exe', ['PROCESS', 'GET', 'Name,ParentProcessId,ProcessId'])
+		: child_process.spawn('ps', ['-A', '-o', 'ppid,pid,stat,comm']);
 
 	//result variable
-	var mapIndex = isWindows ? null : [0, 1, 2];		//array mapping INDEX_xxx to column index, `null` to get from head line.
+	var headLine = true;		//head line flag.
 	var mapPpid = {};	//map ppid to result-item array
 	var resultArray = [];		//array of result-item
 
-	//callback for line
-	var cbLine = function (lineText) {
+	//line callback
+	var lineCallback = function (lineText) {
 		if (!proc || !lineText) return;	//stopped or empty line
 		//console.log("[" + lineText + "]");
 
-		var sa = lineText.trim().split(/\s+/g);
-		var i, imax = sa.length;
+		var sa = lineText.trim().split(/(\s+)/);	//capture spaces, for name may contain continual spaces
 
-		if (mapIndex === null) {
-			//build index mapping for wmic
-			if (imax != COLUMN_COUNT) {
-				proc.kill();
-				proc = null;
-				cb(Error("column count error, " + imax + ", expected " + COLUMN_COUNT + ", from " + sa[i]));
-				return;
-			}
+		if (headLine) { headLine = false; return; }	//skip head line
 
-			mapIndex = [];
-			for (i = 0; i < imax; i++) {
-				switch (sa[i]) {
-					case "ParentProcessId": mapIndex[INDEX_PPID] = i; break;
-					case "ProcessId": mapIndex[INDEX_PID] = i; break;
-					case "Name": mapIndex[INDEX_NAME] = i; break;
-					default:
-						proc.kill();
-						proc = null;
-						cb(Error("unexpected wmic column, " + sa[i]));
-						return;
-				}
-			}
-		}
-		else {
-			//save
-			var item = [], ppid;
-			for (i = 0; i < COLUMN_COUNT; i++) { item[i] = sa[mapIndex[i]]; }
-			if (sa.length > COLUMN_COUNT) {
-				//the last may contain spaces
-				item[item.length - 1] += " " + sa.slice(COLUMN_COUNT).join(" ");
-			}
+		//parse item
+		var item = isWindows
+			? [
+				sa[sa.length - 3],
+				sa[sa.length - 1],
+				sa.slice(0, -4).join("")
+			]
+			: [
+				sa[0],
+				sa[2],
+				sa.slice(6).join(""),
+				sa[4]
+			];
 
-			ppid = item[INDEX_PPID];
+		var ppid = item[INDEX_PPID];
+		if (ppid != item[INDEX_PID]) {		//to avoid duplicated for "0, 0, System Idle Process"
 			var ar = (ppid in mapPpid) ? mapPpid[ppid] : (mapPpid[ppid] = []);
 			ar[ar.length] = item;	//append
-
-			if (item[INDEX_PID] == pid) resultArray.push(item);
 		}
+
+		if (item[INDEX_PID] == pid) resultArray.push(item);
 	}
 
 	//text line buffer
-	var tla = text_line_array(cbLine);
+	var tla = text_line_array(lineCallback);
 	tla.lineSplitter = /[\r\n]+/;		//for wmic.exe use '\r\r\n' to line break
 
 	proc.stdout.on('data', (data) => { tla.add(data.toString()); });
@@ -130,6 +116,7 @@ var getPidDescendant = function (pid, cb) {
 		while (pid) {
 			ar = mapPpid[pid];
 			if (ar) Array.prototype.push.apply(resultArray, ar);
+
 			i++;
 			pid = resultArray[i] && resultArray[i][INDEX_PID];
 		}
@@ -145,6 +132,7 @@ exports.COLUMN_COUNT = COLUMN_COUNT;
 exports.INDEX_PPID = INDEX_PPID;
 exports.INDEX_PID = INDEX_PID;
 exports.INDEX_NAME = INDEX_NAME;
+exports.INDEX_STAT = INDEX_STAT;
 
 //.kill = function (pid, signal) {
 exports.kill = function (pid, signal) {
