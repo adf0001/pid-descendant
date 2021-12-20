@@ -1,0 +1,27 @@
+{
+  "name": "pid-descendant",
+  "version": "1.0.1",
+  "description": "get pid descendant",
+  "main": "pid-descendant.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "pid",
+    "descendant"
+  ],
+  "author": "fwg",
+  "license": "ISC",
+  "dependencies": {
+    "text-line-array": "^1.0.3"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adf0001/pid-descendant.git"
+  },
+  "bugs": {
+    "url": "https://github.com/adf0001/pid-descendant/issues"
+  },
+  "homepage": "https://github.com/adf0001/pid-descendant#readme"
+}
