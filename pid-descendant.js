@@ -136,7 +136,7 @@ exports.INDEX_STAT = INDEX_STAT;
 
 //.kill = function (pid, signal) {
 exports.kill = function (pid, signal) {
-	pid_descendant(pid, function (err, data) {
+	getPidDescendant(pid, function (err, data) {
 		if (err) { console.log(err); return; }
 
 		for (var i = 0; i < data.length; i++) {

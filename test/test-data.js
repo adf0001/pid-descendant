@@ -1,6 +1,6 @@
 // global, for html page
 var child_process = require('child_process');
-pid_descendant = require("../pid-descendant.js");
+var pid_descendant = require("../pid-descendant.js");
 
 module.exports = {
 
@@ -54,7 +54,7 @@ module.exports = {
 	"name with spaces": function (done) {
 		if (typeof window !== "undefined") throw "disable for browser";
 
-		pid_descendant(	5808,	//pid for "mingw-w64-   install-  1.exe", to manually check result
+		pid_descendant(5808,	//pid for "mingw-w64-   install-  1.exe", to manually check result
 			function (err, data) {
 				if (err) { console.log(err); return; }
 
