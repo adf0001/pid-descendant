@@ -1,6 +1,6 @@
 {
   "name": "pid-descendant",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "get pid descendant",
   "main": "pid-descendant.js",
   "scripts": {

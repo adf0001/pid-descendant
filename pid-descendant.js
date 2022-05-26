@@ -140,7 +140,12 @@ exports.kill = function (pid, signal) {
 		if (err) { console.log(err); return; }
 
 		for (var i = 0; i < data.length; i++) {
-			process.kill(data[i][INDEX_PID], signal);
+			try {
+				process.kill(data[i][INDEX_PID], signal);
+			}
+			catch (ex) {	//for "kill ESRCH" exception, when pid is not existed.
+				console.log(ex);
+			}
 		}
 	});
 }
